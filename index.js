@@ -33,23 +33,17 @@ const normalAlphabet = {
   numbers: '1234567890'
 };
 
-// ===== UTILITY FUNCTIONS =====
 function convertFont(text, fontStyle) {
   if (!fontStyle || fontStyle === 'normal') return text;
-  
   const font = fontMaps[fontStyle];
   if (!font) return text;
-  
   return text.split('').map(char => {
     let idx = normalAlphabet.lower.indexOf(char);
     if (idx !== -1 && font.lower[idx]) return font.lower[idx];
-    
     idx = normalAlphabet.upper.indexOf(char);
     if (idx !== -1 && font.upper[idx]) return font.upper[idx];
-    
     idx = normalAlphabet.numbers.indexOf(char);
     if (idx !== -1 && font.numbers[idx]) return font.numbers[idx];
-    
     return char;
   }).join('');
 }
@@ -75,29 +69,19 @@ async function saveFileMetadata(fileId, metadata, env) {
   await env.BOT_KV.put(`file:${fileId}`, JSON.stringify(metadata));
 }
 
-async function getFileList(page = 0, pageSize = 5, env) {
+async function getFileList(page, pageSize, env) {
   const list = await env.BOT_KV.list({ prefix: 'file:' });
   const keys = list.keys;
-  
   const start = page * pageSize;
   const end = start + pageSize;
   const pageKeys = keys.slice(start, end);
-  
-  const files = await Promise.all(
-    pageKeys.map(async (key) => {
-      const data = await env.BOT_KV.get(key.name);
-      return JSON.parse(data);
-    })
-  );
-  
-  return {
-    files,
-    totalPages: Math.ceil(keys.length / pageSize),
-    currentPage: page
-  };
+  const files = await Promise.all(pageKeys.map(async (key) => {
+    const data = await env.BOT_KV.get(key.name);
+    return JSON.parse(data);
+  }));
+  return { files, totalPages: Math.ceil(keys.length / pageSize), currentPage: page };
 }
 
-// ===== TELEGRAM API =====
 async function apiRequest(method, body) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
   const response = await fetch(url, {
@@ -108,7 +92,7 @@ async function apiRequest(method, body) {
   return await response.json();
 }
 
-async function sendMessage(chatId, text, replyMarkup = null) {
+async function sendMessage(chatId, text, replyMarkup) {
   return await apiRequest('sendMessage', {
     chat_id: chatId,
     text: text,
@@ -117,7 +101,7 @@ async function sendMessage(chatId, text, replyMarkup = null) {
   });
 }
 
-async function editMessage(chatId, messageId, text, replyMarkup = null) {
+async function editMessage(chatId, messageId, text, replyMarkup) {
   return await apiRequest('editMessageText', {
     chat_id: chatId,
     message_id: messageId,
@@ -135,10 +119,8 @@ async function copyMessageToChannel(chatId, messageId, channelId) {
   });
 }
 
-// ===== MESSAGE HANDLERS =====
 async function handleStart(msg, env) {
   const chatId = msg.chat.id;
-  
   const text = `「 ✦ ᴡᴇʟᴄᴏᴍᴇ ✦ 」
 ────୨ৎ────
 
@@ -153,25 +135,21 @@ async function handleStart(msg, env) {
 ✿ ƈǟռ ʏօʊ ֆɛɛ ǟʟʟ ȶɦɛֆɛ ʄօռȶֆ ǟռɖ ɖɛƈօʀǟȶɨօռֆ քʀօքɛʀʟʏ?
 
 ﹌﹌﹌﹌﹌﹌﹌`;
-
   const keyboard = {
     inline_keyboard: [
       [{ text: 'Yes, I can see them', callback_data: 'font_yes' }],
       [{ text: 'No, show normal text', callback_data: 'font_no' }]
     ]
   };
-  
   await sendMessage(chatId, text, keyboard);
 }
 
 async function handleFontSelection(msg, env) {
   const chatId = msg.chat.id;
-  
   const text = `「 ✦ ƈɦօօֆɛ ʏօʊʀ ֆȶʏʟɛ ✦ 」
 ────୨ৎ────
 
 ⌗ ֆɛʟɛƈȶ ȶɦɛ ʄօռȶ ֆȶʏʟɛ ʏօʊ'ɖ ʟɨӄɛ ʄօʀ ǟʟʟ ɮօȶ ʍɛֆֆǟɢɛֆ`;
-
   const keyboard = {
     inline_keyboard: [
       [{ text: '「 ✦ 𝕱𝖗𝖆𝖐𝖙𝖚𝖗 𝕾𝖙𝖞𝖑𝖊 ✦ 」', callback_data: 'font_fraktur' }],
@@ -181,7 +159,6 @@ async function handleFontSelection(msg, env) {
       [{ text: '「 ✦ Regular Style ✦ 」', callback_data: 'font_normal' }]
     ]
   };
-  
   await editMessage(chatId, msg.message_id, text, keyboard);
 }
 
@@ -189,51 +166,25 @@ async function handleHelp(msg, env) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
-  
-  let text = 'Available Commands:
-
-';
-  text += '/start - Welcome message and font setup
-';
-  text += '/help - Show this help message
-';
-  text += '/upload - Upload a file
-';
-  text += '/files - View all uploaded files
-';
-  text += '/myfiles - View your uploaded files
-';
-  text += '/cancel - Cancel current operation';
-
+  const commands = ['Available Commands:', '', '/start - Welcome message and font setup', '/help - Show this help message', '/upload - Upload a file', '/files - View all uploaded files', '/myfiles - View your uploaded files', '/cancel - Cancel current operation'];
   if (userId === OWNER_ID) {
-    text += '
-
-Owner Commands:
-';
-    text += '/setchannel - Set file forwarding channel
-';
-    text += '/settings - Bot settings
-';
-    text += '/stats - View statistics';
+    commands.push('', 'Owner Commands:', '/setchannel - Set file forwarding channel', '/settings - Bot settings', '/stats - View statistics');
   }
-  
-  text = convertFont(text, font);
-  await sendMessage(chatId, text);
+  const text = convertFont(commands.join('
+'), font);
+  await sendMessage(chatId, text, null);
 }
 
 async function handleSetChannel(msg, env) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
-  
   if (userId !== OWNER_ID) {
-    await sendMessage(chatId, 'You are not authorized to use this command');
+    await sendMessage(chatId, 'You are not authorized to use this command', null);
     return;
   }
-  
   const font = await getUserFont(userId, env);
   const text = convertFont('Please forward a message from the channel where files should be sent', font);
-  
-  await sendMessage(chatId, text);
+  await sendMessage(chatId, text, null);
   await env.BOT_KV.put(`user:${userId}:awaiting`, 'channel_forward');
 }
 
@@ -241,24 +192,17 @@ async function handleFileUpload(msg, env) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
-  
   const file = msg.document || (msg.photo && msg.photo[msg.photo.length - 1]) || msg.video || msg.audio;
-  
   if (!file) {
-    const text = convertFont('Please send a file to upload', font);
-    await sendMessage(chatId, text);
+    await sendMessage(chatId, convertFont('Please send a file to upload', font), null);
     return;
   }
-  
   const channelId = await getChannelId(env);
   if (!channelId) {
-    const text = convertFont('Channel not configured. Please contact the owner', font);
-    await sendMessage(chatId, text);
+    await sendMessage(chatId, convertFont('Channel not configured. Please contact the owner', font), null);
     return;
   }
-  
   const result = await copyMessageToChannel(chatId, msg.message_id, channelId);
-  
   if (result.ok) {
     const metadata = {
       fileId: file.file_id,
@@ -269,51 +213,38 @@ async function handleFileUpload(msg, env) {
       uploadedAt: new Date().toISOString(),
       channelMessageId: result.result.message_id
     };
-    
     await saveFileMetadata(file.file_id, metadata, env);
-    
-    const text = convertFont('File uploaded successfully', font);
-    await sendMessage(chatId, text);
+    await sendMessage(chatId, convertFont('File uploaded successfully', font), null);
   } else {
-    const text = convertFont('Failed to upload file. Please try again', font);
-    await sendMessage(chatId, text);
+    await sendMessage(chatId, convertFont('Failed to upload file. Please try again', font), null);
   }
 }
 
-async function handleFilesList(msg, env, page = 0) {
-  const userId = msg.from.id;
-  const chatId = msg.chat.id;
-  const font = await getUserFont(userId, env);
-  
-  const { files, totalPages, currentPage } = await getFileList(page, 5, env);
-  
-  let text = '';
-  text += convertFont('Uploaded Files', font) + '
-';
-  text += convertFont('────୨ৎ────', font) + '
-
-';
-  text += convertFont('Page ' + (currentPage + 1) + ' of ' + totalPages, font) + '
-
-';
-  
+async function buildFileListText(files, currentPage, totalPages, font) {
+  let parts = [convertFont('Uploaded Files', font), convertFont('────୨ৎ────', font), '', convertFont('Page ' + (currentPage + 1) + ' of ' + totalPages, font), ''];
   if (files.length === 0) {
-    text += convertFont('No files uploaded yet', font);
+    parts.push(convertFont('No files uploaded yet', font));
   } else {
     files.forEach((file) => {
       const name = convertFont(file.fileName, font);
       const size = (file.fileSize / 1024 / 1024).toFixed(2);
       const date = new Date(file.uploadedAt).toLocaleDateString();
-      text += convertFont('File', font) + ': ' + name + '
-';
-      text += convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date + '
-
-';
+      parts.push(convertFont('File', font) + ': ' + name);
+      parts.push(convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date);
+      parts.push('');
     });
   }
-  
-  text += convertFont('﹌﹌﹌﹌﹌﹌﹌', font);
-  
+  parts.push(convertFont('﹌﹌﹌﹌﹌﹌﹌', font));
+  return parts.join('
+');
+}
+
+async function handleFilesList(msg, env, page) {
+  const userId = msg.from.id;
+  const chatId = msg.chat.id;
+  const font = await getUserFont(userId, env);
+  const { files, totalPages, currentPage } = await getFileList(page || 0, 5, env);
+  const text = await buildFileListText(files, currentPage, totalPages, font);
   const buttons = [];
   if (currentPage > 0) {
     buttons.push({ text: '⟨ Previous', callback_data: 'files_page_' + (currentPage - 1) });
@@ -321,62 +252,29 @@ async function handleFilesList(msg, env, page = 0) {
   if (currentPage < totalPages - 1) {
     buttons.push({ text: 'Next ⟩', callback_data: 'files_page_' + (currentPage + 1) });
   }
-  
   const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
-  
   await sendMessage(chatId, text, keyboard);
 }
 
-// ===== CALLBACK HANDLERS =====
 async function handleCallback(callback, env) {
   const userId = callback.from.id;
   const chatId = callback.message.chat.id;
   const data = callback.data;
-  
   if (data === 'font_yes') {
     await handleFontSelection(callback.message, env);
   } else if (data === 'font_no') {
     await setUserFont(userId, 'normal', env);
-    const text = 'Font set to normal text. You can start using the bot now!';
-    await editMessage(chatId, callback.message.message_id, text);
+    await editMessage(chatId, callback.message.message_id, 'Font set to normal text. You can start using the bot now!', null);
   } else if (data.startsWith('font_')) {
     const fontStyle = data.replace('font_', '');
     await setUserFont(userId, fontStyle, env);
     const font = await getUserFont(userId, env);
-    const text = convertFont('Font style saved! You can now use the bot with your selected style', font);
-    await editMessage(chatId, callback.message.message_id, text);
+    await editMessage(chatId, callback.message.message_id, convertFont('Font style saved! You can now use the bot with your selected style', font), null);
   } else if (data.startsWith('files_page_')) {
     const page = parseInt(data.replace('files_page_', ''));
     const font = await getUserFont(userId, env);
     const { files, totalPages, currentPage } = await getFileList(page, 5, env);
-    
-    let text = '';
-    text += convertFont('Uploaded Files', font) + '
-';
-    text += convertFont('────୨ৎ────', font) + '
-
-';
-    text += convertFont('Page ' + (currentPage + 1) + ' of ' + totalPages, font) + '
-
-';
-    
-    if (files.length === 0) {
-      text += convertFont('No files uploaded yet', font);
-    } else {
-      files.forEach((file) => {
-        const name = convertFont(file.fileName, font);
-        const size = (file.fileSize / 1024 / 1024).toFixed(2);
-        const date = new Date(file.uploadedAt).toLocaleDateString();
-        text += convertFont('File', font) + ': ' + name + '
-';
-        text += convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date + '
-
-';
-      });
-    }
-    
-    text += convertFont('﹌﹌﹌﹌﹌﹌﹌', font);
-    
+    const text = await buildFileListText(files, currentPage, totalPages, font);
     const buttons = [];
     if (currentPage > 0) {
       buttons.push({ text: '⟨ Previous', callback_data: 'files_page_' + (currentPage - 1) });
@@ -384,33 +282,26 @@ async function handleCallback(callback, env) {
     if (currentPage < totalPages - 1) {
       buttons.push({ text: 'Next ⟩', callback_data: 'files_page_' + (currentPage + 1) });
     }
-    
     const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
     await editMessage(chatId, callback.message.message_id, text, keyboard);
   }
-  
   await apiRequest('answerCallbackQuery', { callback_query_id: callback.id });
 }
 
-// ===== MAIN HANDLER =====
 async function handleUpdate(update, env) {
   try {
     if (update.message) {
       const msg = update.message;
       const text = msg.text || '';
       const userId = msg.from.id;
-      
       const awaiting = await env.BOT_KV.get(`user:${userId}:awaiting`);
-      
       if (awaiting === 'channel_forward' && msg.forward_from_chat) {
         await setChannelId(msg.forward_from_chat.id, env);
         await env.BOT_KV.delete(`user:${userId}:awaiting`);
         const font = await getUserFont(userId, env);
-        const successText = convertFont('Channel configured successfully', font);
-        await sendMessage(msg.chat.id, successText);
+        await sendMessage(msg.chat.id, convertFont('Channel configured successfully', font), null);
         return;
       }
-      
       if (text.startsWith('/start')) {
         await handleStart(msg, env);
       } else if (text.startsWith('/help')) {
@@ -418,7 +309,7 @@ async function handleUpdate(update, env) {
       } else if (text.startsWith('/setchannel')) {
         await handleSetChannel(msg, env);
       } else if (text.startsWith('/files')) {
-        await handleFilesList(msg, env);
+        await handleFilesList(msg, env, 0);
       } else if (msg.document || msg.photo || msg.video || msg.audio) {
         await handleFileUpload(msg, env);
       }
@@ -426,48 +317,34 @@ async function handleUpdate(update, env) {
       await handleCallback(update.callback_query, env);
     }
   } catch (error) {
-    console.error('Error handling update:', error);
+    console.error('Error:', error);
   }
 }
 
-// ===== WEBHOOK SETUP =====
 async function registerWebhook(request) {
   const url = new URL(request.url);
   const webhookUrl = url.protocol + '//' + url.host + '/webhook';
-  
-  const result = await apiRequest('setWebhook', {
-    url: webhookUrl,
-    secret_token: WEBHOOK_SECRET
-  });
-  
-  return new Response(JSON.stringify(result), {
-    headers: { 'Content-Type': 'application/json' }
-  });
+  const result = await apiRequest('setWebhook', { url: webhookUrl, secret_token: WEBHOOK_SECRET });
+  return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
 }
 
-// ===== WORKER ENTRY POINT =====
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    
     if (url.pathname === '/registerWebhook') {
       return await registerWebhook(request);
     }
-    
     if (url.pathname === '/webhook') {
       if (request.method === 'POST') {
         const secretToken = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
         if (secretToken !== WEBHOOK_SECRET) {
           return new Response('Unauthorized', { status: 401 });
         }
-        
         const update = await request.json();
         await handleUpdate(update, env);
-        
         return new Response('OK');
       }
     }
-    
     return new Response('File Upload Bot is running!', { status: 200 });
   }
 };
