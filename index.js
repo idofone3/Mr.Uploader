@@ -121,20 +121,22 @@ async function copyMessageToChannel(chatId, messageId, channelId) {
 
 async function handleStart(msg, env) {
   const chatId = msg.chat.id;
-  const text = `「 ✦ ᴡᴇʟᴄᴏᴍᴇ ✦ 」
-────୨ৎ────
-
-ɦɛʟʟօ ȶɦɛʀɛ, աɛʟƈօʍɛ ȶօ ȶɦɛ ʄɨʟɛ ʊքʟօǟɖ ɮօȶ
-
-ɨ ǟʍ ɦɛʀɛ ȶօ ɦɛʟք ʏօʊ ֆɛƈʊʀɛʟʏ ֆȶօʀɛ ǟռɖ ʍǟռǟɢɛ ʏօʊʀ ʄɨʟɛֆ աɨȶɦ ƈǟʀɛ ǟռɖ ɖɛɖɨƈǟȶɨօռ
-
-⌗ ʄɨʀֆȶ, ʟɛȶ'ֆ ƈɦɛƈӄ ɨʄ ʏօʊ ƈǟռ ֆɛɛ ǟʟʟ ȶɦɛ ʄօռȶֆ ǟռɖ ɖɛƈօʀǟȶɨʋɛ ɛʟɛʍɛռȶֆ ɮɛʟօա
-
-𝖆𝖇𝖈𝖉𝖊𝖋 ⌗ ⓐⓑⓒⓓⓔⓕ ⌗ 𝓪𝓫𝓬𝓭𝓮𝓯 ⌗ ǟɮƈɖɛʄ
-
-✿ ƈǟռ ʏօʊ ֆɛɛ ǟʟʟ ȶɦɛֆɛ ʄօռȶֆ ǟռɖ ɖɛƈօʀǟȶɨօռֆ քʀօքɛʀʟʏ?
-
-﹌﹌﹌﹌﹌﹌﹌`;
+  const lines = [];
+  lines.push('「 ✦ ᴡᴇʟᴄᴏᴍᴇ ✦ 」');
+  lines.push('────୨ৎ────');
+  lines.push('');
+  lines.push('ɦɛʟʟօ ȶɦɛʀɛ, աɛʟƈօʍɛ ȶօ ȶɦɛ ʄɨʟɛ ʊքʟօǟɖ ɮօȶ');
+  lines.push('');
+  lines.push('ɨ ǟʍ ɦɛʀɛ ȶօ ɦɛʟք ʏօʊ ֆɛƈʊʀɛʟʏ ֆȶօʀɛ ǟռɖ ʍǟռǟɢɛ ʏօʊʀ ʄɨʟɛֆ աɨȶɦ ƈǟʀɛ ǟռɖ ɖɛɖɨƈǟȶɨօռ');
+  lines.push('');
+  lines.push('⌗ ʄɨʀֆȶ, ʟɛȶ\'ֆ ƈɦɛƈӄ ɨʄ ʏօʊ ƈǟռ ֆɛɛ ǟʟʟ ȶɦɛ ʄօռȶֆ ǟռɖ ɖɛƈօʀǟȶɨʋɛ ɛʟɛʍɛռȶֆ ɮɛʟօա');
+  lines.push('');
+  lines.push('𝖆𝖇𝖈𝖉𝖊𝖋 ⌗ ⓐⓑⓒⓓⓔⓕ ⌗ 𝓪𝓫𝓬𝓭𝓮𝓯 ⌗ ǟɮƈɖɛʄ');
+  lines.push('');
+  lines.push('✿ ƈǟռ ʏօʊ ֆɛɛ ǟʟʟ ȶɦɛֆɛ ʄօռȶֆ ǟռɖ ɖɛƈօʀǟȶɨօռֆ քʀօքɛʀʟʏ?');
+  lines.push('');
+  lines.push('﹌﹌﹌﹌﹌﹌﹌');
+  const text = lines.join('\n');
   const keyboard = {
     inline_keyboard: [
       [{ text: 'Yes, I can see them', callback_data: 'font_yes' }],
@@ -146,10 +148,12 @@ async function handleStart(msg, env) {
 
 async function handleFontSelection(msg, env) {
   const chatId = msg.chat.id;
-  const text = `「 ✦ ƈɦօօֆɛ ʏօʊʀ ֆȶʏʟɛ ✦ 」
-────୨ৎ────
-
-⌗ ֆɛʟɛƈȶ ȶɦɛ ʄօռȶ ֆȶʏʟɛ ʏօʊ'ɖ ʟɨӄɛ ʄօʀ ǟʟʟ ɮօȶ ʍɛֆֆǟɢɛֆ`;
+  const lines = [];
+  lines.push('「 ✦ ƈɦօօֆɛ ʏօʊʀ ֆȶʏʟɛ ✦ 」');
+  lines.push('────୨ৎ────');
+  lines.push('');
+  lines.push('⌗ ֆɛʟɛƈȶ ȶɦɛ ʄօռȶ ֆȶʏʟɛ ʏօʊ\'ɖ ʟɨӄɛ ʄօʀ ǟʟʟ ɮօȶ ʍɛֆֆǟɢɛֆ');
+  const text = lines.join('\n');
   const keyboard = {
     inline_keyboard: [
       [{ text: '「 ✦ 𝕱𝖗𝖆𝖐𝖙𝖚𝖗 𝕾𝖙𝖞𝖑𝖊 ✦ 」', callback_data: 'font_fraktur' }],
@@ -166,12 +170,24 @@ async function handleHelp(msg, env) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
-  const commands = ['Available Commands:', '', '/start - Welcome message and font setup', '/help - Show this help message', '/upload - Upload a file', '/files - View all uploaded files', '/myfiles - View your uploaded files', '/cancel - Cancel current operation'];
+  const commands = [];
+  commands.push('Available Commands:');
+  commands.push('');
+  commands.push('/start - Welcome message and font setup');
+  commands.push('/help - Show this help message');
+  commands.push('/upload - Upload a file');
+  commands.push('/files - View all uploaded files');
+  commands.push('/myfiles - View your uploaded files');
+  commands.push('/cancel - Cancel current operation');
   if (userId === OWNER_ID) {
-    commands.push('', 'Owner Commands:', '/setchannel - Set file forwarding channel', '/settings - Bot settings', '/stats - View statistics');
+    commands.push('');
+    commands.push('Owner Commands:');
+    commands.push('/setchannel - Set file forwarding channel');
+    commands.push('/settings - Bot settings');
+    commands.push('/stats - View statistics');
   }
-  const text = convertFont(commands.join('
-'), font);
+  const joinedText = commands.join('\n');
+  const text = convertFont(joinedText, font);
   await sendMessage(chatId, text, null);
 }
 
@@ -221,7 +237,13 @@ async function handleFileUpload(msg, env) {
 }
 
 async function buildFileListText(files, currentPage, totalPages, font) {
-  let parts = [convertFont('Uploaded Files', font), convertFont('────୨ৎ────', font), '', convertFont('Page ' + (currentPage + 1) + ' of ' + totalPages, font), ''];
+  const parts = [];
+  parts.push(convertFont('Uploaded Files', font));
+  parts.push(convertFont('────୨ৎ────', font));
+  parts.push('');
+  const pageText = 'Page ' + (currentPage + 1) + ' of ' + totalPages;
+  parts.push(convertFont(pageText, font));
+  parts.push('');
   if (files.length === 0) {
     parts.push(convertFont('No files uploaded yet', font));
   } else {
@@ -235,22 +257,24 @@ async function buildFileListText(files, currentPage, totalPages, font) {
     });
   }
   parts.push(convertFont('﹌﹌﹌﹌﹌﹌﹌', font));
-  return parts.join('
-');
+  return parts.join('\n');
 }
 
 async function handleFilesList(msg, env, page) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
-  const { files, totalPages, currentPage } = await getFileList(page || 0, 5, env);
+  const actualPage = page || 0;
+  const { files, totalPages, currentPage } = await getFileList(actualPage, 5, env);
   const text = await buildFileListText(files, currentPage, totalPages, font);
   const buttons = [];
   if (currentPage > 0) {
-    buttons.push({ text: '⟨ Previous', callback_data: 'files_page_' + (currentPage - 1) });
+    const prevData = 'files_page_' + (currentPage - 1);
+    buttons.push({ text: '⟨ Previous', callback_data: prevData });
   }
   if (currentPage < totalPages - 1) {
-    buttons.push({ text: 'Next ⟩', callback_data: 'files_page_' + (currentPage + 1) });
+    const nextData = 'files_page_' + (currentPage + 1);
+    buttons.push({ text: 'Next ⟩', callback_data: nextData });
   }
   const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
   await sendMessage(chatId, text, keyboard);
@@ -271,16 +295,19 @@ async function handleCallback(callback, env) {
     const font = await getUserFont(userId, env);
     await editMessage(chatId, callback.message.message_id, convertFont('Font style saved! You can now use the bot with your selected style', font), null);
   } else if (data.startsWith('files_page_')) {
-    const page = parseInt(data.replace('files_page_', ''));
+    const pageStr = data.replace('files_page_', '');
+    const page = parseInt(pageStr);
     const font = await getUserFont(userId, env);
     const { files, totalPages, currentPage } = await getFileList(page, 5, env);
     const text = await buildFileListText(files, currentPage, totalPages, font);
     const buttons = [];
     if (currentPage > 0) {
-      buttons.push({ text: '⟨ Previous', callback_data: 'files_page_' + (currentPage - 1) });
+      const prevData = 'files_page_' + (currentPage - 1);
+      buttons.push({ text: '⟨ Previous', callback_data: prevData });
     }
     if (currentPage < totalPages - 1) {
-      buttons.push({ text: 'Next ⟩', callback_data: 'files_page_' + (currentPage + 1) });
+      const nextData = 'files_page_' + (currentPage + 1);
+      buttons.push({ text: 'Next ⟩', callback_data: nextData });
     }
     const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
     await editMessage(chatId, callback.message.message_id, text, keyboard);
