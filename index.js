@@ -85,9 +85,7 @@ async function saveFileMetadata(fileId, metadata, env) {
 }
 
 async function savePendingUpload(userId, fileInfo, env) {
-  await env.BOT_KV.put(`pending:${userId}`, JSON.stringify(fileInfo), {
-    expirationTtl: 300
-  });
+  await env.BOT_KV.put(`pending:${userId}`, JSON.stringify(fileInfo), { expirationTtl: 300 });
 }
 
 async function getPendingUpload(userId, env) {
@@ -105,17 +103,11 @@ async function getFileList(page, pageSize, env) {
   const start = page * pageSize;
   const end = start + pageSize;
   const pageKeys = keys.slice(start, end);
-  const files = await Promise.all(
-    pageKeys.map(async key => {
-      const data = await env.BOT_KV.get(key.name);
-      return JSON.parse(data);
-    })
-  );
-  return {
-    files,
-    totalPages: Math.ceil(keys.length / pageSize),
-    currentPage: page
-  };
+  const files = await Promise.all(pageKeys.map(async key => {
+    const data = await env.BOT_KV.get(key.name);
+    return JSON.parse(data);
+  }));
+  return { files, totalPages: Math.ceil(keys.length / pageSize), currentPage: page };
 }
 
 // ===== COMMAND INFO =====
@@ -144,9 +136,9 @@ async function handleStart(msg, env) {
   lines.push('⌗ ʊֆɛ /help ȶօ ֆɛɛ ǟʟʟ ƈօʍʍǟռɖֆ');
   lines.push('');
   lines.push('﹌﹌﹌﹌﹌﹌﹌');
-  
-  await sendMessage(msg.chat.id, lines.join('
-'));
+  const finalText = lines.join('
+');
+  await sendMessage(msg.chat.id, finalText);
 }
 
 async function handleHelp(msg, env) {
@@ -154,17 +146,14 @@ async function handleHelp(msg, env) {
   for (const cmd in commandInfo) {
     buttons.push([{ text: toSansFont(cmd), callback_data: `help_${cmd}` }]);
   }
-  
   const text = toSansFont('Select a command to see details:');
   const keyboard = { inline_keyboard: buttons };
-  
   await sendMessage(msg.chat.id, text, keyboard);
 }
 
 async function handleHelpCallback(callback, env) {
   const command = callback.data.replace('help_', '');
   const description = commandInfo[command] || 'No information available';
-  
   const lines = [];
   lines.push(`「 ✦ ${command} ✦ 」`);
   lines.push('────୨ৎ────');
@@ -172,33 +161,23 @@ async function handleHelpCallback(callback, env) {
   lines.push(toSansFont(description));
   lines.push('');
   lines.push('﹌﹌﹌﹌﹌﹌﹌');
-  
+  const finalText = lines.join('
+');
   const buttons = [];
   for (const cmd in commandInfo) {
     buttons.push([{ text: toSansFont(cmd), callback_data: `help_${cmd}` }]);
   }
-  
-  await editMessage(
-    callback.message.chat.id,
-    callback.message.message_id,
-    lines.join('
-'),
-    { inline_keyboard: buttons }
-  );
-  
+  await editMessage(callback.message.chat.id, callback.message.message_id, finalText, { inline_keyboard: buttons });
   await answerCallback(callback.id);
 }
 
 async function handleSetChannel(msg, env) {
   const userId = msg.from.id;
-  
   if (userId !== OWNER_ID) {
     await sendMessage(msg.chat.id, toSansFont('You are not authorized'));
     return;
   }
-  
   await env.BOT_KV.put(`user:${userId}:awaiting`, 'channel_forward');
-  
   const text = toSansFont('Forward a message from the channel');
   await sendMessage(msg.chat.id, text);
 }
@@ -206,36 +185,24 @@ async function handleSetChannel(msg, env) {
 async function handleFileReceived(msg, env) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
-  
-  const file = msg.document || 
-    (msg.photo && msg.photo[msg.photo.length - 1]) || 
-    msg.video || 
-    msg.audio;
-  
+  const file = msg.document || (msg.photo && msg.photo[msg.photo.length - 1]) || msg.video || msg.audio;
   if (!file) return;
-  
   const channelId = await getChannelId(env);
   if (!channelId) {
     await sendMessage(chatId, toSansFont('Channel not configured. Contact owner.'));
     return;
   }
-  
-  const fileName = file.file_name || 
-    (msg.photo ? 'Photo' : msg.video ? 'Video' : msg.audio ? 'Audio' : 'File');
+  const fileName = file.file_name || (msg.photo ? 'Photo' : msg.video ? 'Video' : msg.audio ? 'Audio' : 'File');
   const fileSize = (file.file_size || 0) / 1024 / 1024;
-  
   const fileInfo = {
     chatId,
     messageId: msg.message_id,
     fileId: file.file_id,
     fileName,
     fileSize: file.file_size || 0,
-    fileType: msg.document ? 'document' : 
-      (msg.photo ? 'photo' : msg.video ? 'video' : 'audio')
+    fileType: msg.document ? 'document' : (msg.photo ? 'photo' : msg.video ? 'video' : 'audio')
   };
-  
   await savePendingUpload(userId, fileInfo, env);
-  
   const lines = [];
   lines.push('「 ✦ ' + toSansFont('Upload Confirmation') + ' ✦ 」');
   lines.push('────୨ৎ────');
@@ -246,34 +213,29 @@ async function handleFileReceived(msg, env) {
   lines.push(toSansFont('Upload this file?'));
   lines.push('');
   lines.push('﹌﹌﹌﹌﹌﹌﹌');
-  
+  const finalText = lines.join('
+');
   const keyboard = {
     inline_keyboard: [[
       { text: '✅ ' + toSansFont('Yes Upload'), callback_data: 'upload_yes' },
       { text: '❌ ' + toSansFont('No Cancel'), callback_data: 'upload_no' }
     ]]
   };
-  
-  await sendMessage(chatId, lines.join('
-'), keyboard);
+  await sendMessage(chatId, finalText, keyboard);
 }
 
 async function handleUploadConfirm(callback, env) {
   const userId = callback.from.id;
   const chatId = callback.message.chat.id;
   const messageId = callback.message.message_id;
-  
   const fileInfo = await getPendingUpload(userId, env);
-  
   if (!fileInfo) {
     await editMessage(chatId, messageId, toSansFont('Upload expired. Send file again.'));
     await answerCallback(callback.id, 'Upload session expired');
     return;
   }
-  
   const channelId = await getChannelId(env);
   const result = await copyMessage(fileInfo.chatId, fileInfo.messageId, channelId);
-  
   if (result.ok) {
     const metadata = {
       ...fileInfo,
@@ -281,10 +243,8 @@ async function handleUploadConfirm(callback, env) {
       uploadedAt: new Date().toISOString(),
       channelMessageId: result.result.message_id
     };
-    
     await saveFileMetadata(fileInfo.fileId, metadata, env);
     await deletePendingUpload(userId, env);
-    
     const lines = [];
     lines.push('「 ✦ ' + toSansFont('Success') + ' ✦ 」');
     lines.push('────୨ৎ────');
@@ -294,9 +254,9 @@ async function handleUploadConfirm(callback, env) {
     lines.push('✿ ' + toSansFont('Your file has been sent to the channel'));
     lines.push('');
     lines.push('﹌﹌﹌﹌﹌﹌﹌');
-    
-    await editMessage(chatId, messageId, lines.join('
-'));
+    const finalText = lines.join('
+');
+    await editMessage(chatId, messageId, finalText);
     await answerCallback(callback.id, '✅ Upload successful!');
   } else {
     await editMessage(chatId, messageId, toSansFont('Upload failed. Try again.'));
@@ -306,9 +266,7 @@ async function handleUploadConfirm(callback, env) {
 
 async function handleUploadCancel(callback, env) {
   const userId = callback.from.id;
-  
   await deletePendingUpload(userId, env);
-  
   const lines = [];
   lines.push('「 ✦ ' + toSansFont('Cancelled') + ' ✦ 」');
   lines.push('────୨ৎ────');
@@ -316,27 +274,20 @@ async function handleUploadCancel(callback, env) {
   lines.push('❌ ' + toSansFont('Upload cancelled'));
   lines.push('');
   lines.push('﹌﹌﹌﹌﹌﹌﹌');
-  
-  await editMessage(
-    callback.message.chat.id,
-    callback.message.message_id,
-    lines.join('
-')
-  );
-  
+  const finalText = lines.join('
+');
+  await editMessage(callback.message.chat.id, callback.message.message_id, finalText);
   await answerCallback(callback.id, 'Upload cancelled');
 }
 
 async function handleFiles(msg, env, page = 0) {
   const { files, totalPages, currentPage } = await getFileList(page, 5, env);
-  
   const lines = [];
   lines.push('「 ✦ ' + toSansFont('Uploaded Files') + ' ✦ 」');
   lines.push('────୨ৎ────');
   lines.push('');
   lines.push(toSansFont(`Page ${currentPage + 1} of ${totalPages}`));
   lines.push('');
-  
   if (files.length === 0) {
     lines.push(toSansFont('No files uploaded yet'));
   } else {
@@ -348,9 +299,9 @@ async function handleFiles(msg, env, page = 0) {
       lines.push('');
     });
   }
-  
   lines.push('﹌﹌﹌﹌﹌﹌﹌');
-  
+  const finalText = lines.join('
+');
   const buttons = [];
   if (currentPage > 0) {
     buttons.push({ text: '⟨ ' + toSansFont('Previous'), callback_data: `files_${currentPage - 1}` });
@@ -358,24 +309,19 @@ async function handleFiles(msg, env, page = 0) {
   if (currentPage < totalPages - 1) {
     buttons.push({ text: toSansFont('Next') + ' ⟩', callback_data: `files_${currentPage + 1}` });
   }
-  
   const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
-  
-  await sendMessage(msg.chat.id, lines.join('
-'), keyboard);
+  await sendMessage(msg.chat.id, finalText, keyboard);
 }
 
 async function handleFilesCallback(callback, env) {
   const page = parseInt(callback.data.replace('files_', ''));
   const { files, totalPages, currentPage } = await getFileList(page, 5, env);
-  
   const lines = [];
   lines.push('「 ✦ ' + toSansFont('Uploaded Files') + ' ✦ 」');
   lines.push('────୨ৎ────');
   lines.push('');
   lines.push(toSansFont(`Page ${currentPage + 1} of ${totalPages}`));
   lines.push('');
-  
   if (files.length === 0) {
     lines.push(toSansFont('No files uploaded yet'));
   } else {
@@ -387,9 +333,9 @@ async function handleFilesCallback(callback, env) {
       lines.push('');
     });
   }
-  
   lines.push('﹌﹌﹌﹌﹌﹌﹌');
-  
+  const finalText = lines.join('
+');
   const buttons = [];
   if (currentPage > 0) {
     buttons.push({ text: '⟨ ' + toSansFont('Previous'), callback_data: `files_${currentPage - 1}` });
@@ -397,24 +343,14 @@ async function handleFilesCallback(callback, env) {
   if (currentPage < totalPages - 1) {
     buttons.push({ text: toSansFont('Next') + ' ⟩', callback_data: `files_${currentPage + 1}` });
   }
-  
   const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
-  
-  await editMessage(
-    callback.message.chat.id,
-    callback.message.message_id,
-    lines.join('
-'),
-    keyboard
-  );
-  
+  await editMessage(callback.message.chat.id, callback.message.message_id, finalText, keyboard);
   await answerCallback(callback.id);
 }
 
 // ===== CALLBACK HANDLER =====
 async function handleCallback(callback, env) {
   const data = callback.data;
-  
   if (data.startsWith('help_')) {
     await handleHelpCallback(callback, env);
   } else if (data === 'upload_yes') {
@@ -435,16 +371,13 @@ async function handleUpdate(update, env) {
       const msg = update.message;
       const text = msg.text || '';
       const userId = msg.from.id;
-      
       const awaiting = await env.BOT_KV.get(`user:${userId}:awaiting`);
-      
       if (awaiting === 'channel_forward' && msg.forward_from_chat) {
         await setChannelId(msg.forward_from_chat.id, env);
         await env.BOT_KV.delete(`user:${userId}:awaiting`);
         await sendMessage(msg.chat.id, toSansFont('Channel configured successfully'));
         return;
       }
-      
       if (text === '/start') {
         await handleStart(msg, env);
       } else if (text === '/help') {
@@ -468,36 +401,26 @@ async function handleUpdate(update, env) {
 async function registerWebhook(request) {
   const url = new URL(request.url);
   const webhookUrl = `${url.protocol}//${url.host}/webhook`;
-  const result = await apiRequest('setWebhook', {
-    url: webhookUrl,
-    secret_token: WEBHOOK_SECRET
-  });
-  return new Response(JSON.stringify(result), {
-    headers: { 'Content-Type': 'application/json' }
-  });
+  const result = await apiRequest('setWebhook', { url: webhookUrl, secret_token: WEBHOOK_SECRET });
+  return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
 }
 
 // ===== CLOUDFLARE WORKER =====
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    
     if (url.pathname === '/registerWebhook') {
       return await registerWebhook(request);
     }
-    
     if (url.pathname === '/webhook' && request.method === 'POST') {
       const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
       if (secret !== WEBHOOK_SECRET) {
         return new Response('Unauthorized', { status: 401 });
       }
-      
       const update = await request.json();
       await handleUpdate(update, env);
       return new Response('OK');
     }
-    
     return new Response('Telegram File Upload Bot Running', { status: 200 });
   }
 };
-    
