@@ -282,7 +282,8 @@ async function handleFilesList(msg, env, page = 0) {
   const { files, totalPages, currentPage } = await getFileList(page, 5, env);
   
   let text = convertFont('Uploaded Files', font) + '
-' + convertFont('────୨ৎ────', font) + '
+';
+  text += convertFont('────୨ৎ────', font) + '
 
 ';
   text += convertFont(`Page ${currentPage + 1} of ${totalPages}`, font) + '
@@ -293,11 +294,11 @@ async function handleFilesList(msg, env, page = 0) {
     const name = convertFont(file.fileName, font);
     const size = (file.fileSize / 1024 / 1024).toFixed(2);
     const date = new Date(file.uploadedAt).toLocaleDateString();
-    text += `${convertFont('File', font)}: ${name}
-`;
-    text += `${convertFont('Size', font)}: ${size} MB ${convertFont('Uploaded', font)}: ${date}
+    text += convertFont('File', font) + ': ' + name + '
+';
+    text += convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date + '
 
-`;
+';
   });
   
   text += convertFont('﹌﹌﹌﹌﹌﹌﹌', font);
