@@ -1,14 +1,14 @@
 // ===== CONFIGURATION =====
-const BOT_TOKEN = '8422136188:AAHljCDC6FWQPtW38HDuh8-2PWCTeFueSG0'; // Get from @BotFather
-const OWNER_ID = 7217149295; // Replace with your Telegram user ID
-const WEBHOOK_SECRET = 'Anon'; // Random secret for security
+const BOT_TOKEN = '8422136188:AAHljCDC6FWQPtW38HDuh8-2PWCTeFueSG0';
+const OWNER_ID = 7217149295;
+const WEBHOOK_SECRET = 'Anon';
 
 // ===== FONT MAPS =====
 const fontMaps = {
   fraktur: {
     lower: '𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟',
     upper: '𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅',
-    numbers: '𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗𝟎'
+    numbers: '1234567890'
   },
   circled: {
     lower: 'ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ',
@@ -18,12 +18,12 @@ const fontMaps = {
   cursive: {
     lower: '𝓪𝓫𝓬𝓭𝓮𝓯𝓰𝓱𝓲𝓳𝓴𝓵𝓶𝓷𝓸𝓹𝓺𝓻𝓼𝓽𝓾𝓿𝔀𝔁𝔂𝔃',
     upper: '𝓐𝓑𝓒𝓓𝓔𝓕𝓖𝓗𝓘𝓙𝓚𝓛𝓜𝓝𝓞𝓟𝓠𝓡𝓢𝓣𝓤𝓥𝓦𝓧𝓨𝓩',
-    numbers: '123456789'
+    numbers: '1234567890'
   },
   sans: {
     lower: 'ǟɮƈɖɛʄɢɦɨʝӄʟʍռօքզʀֆȶʊʋաӼʏʐ',
     upper: 'ǟɮƈɖɛʄɢɦɨʝӄʟʍռօքզʀֆȶʊʋաӼʏʐ',
-    numbers: '123456789'
+    numbers: '1234567890'
   }
 };
 
@@ -42,13 +42,13 @@ function convertFont(text, fontStyle) {
   
   return text.split('').map(char => {
     let idx = normalAlphabet.lower.indexOf(char);
-    if (idx !== -1) return font.lower[idx] || char;
+    if (idx !== -1 && font.lower[idx]) return font.lower[idx];
     
     idx = normalAlphabet.upper.indexOf(char);
-    if (idx !== -1) return font.upper[idx] || char;
+    if (idx !== -1 && font.upper[idx]) return font.upper[idx];
     
     idx = normalAlphabet.numbers.indexOf(char);
-    if (idx !== -1) return font.numbers[idx] || char;
+    if (idx !== -1 && font.numbers[idx]) return font.numbers[idx];
     
     return char;
   }).join('');
@@ -137,7 +137,6 @@ async function copyMessageToChannel(chatId, messageId, channelId) {
 
 // ===== MESSAGE HANDLERS =====
 async function handleStart(msg, env) {
-  const userId = msg.from.id;
   const chatId = msg.chat.id;
   
   const text = `「 ✦ ᴡᴇʟᴄᴏᴍᴇ ✦ 」
@@ -167,7 +166,6 @@ async function handleStart(msg, env) {
 
 async function handleFontSelection(msg, env) {
   const chatId = msg.chat.id;
-  const userId = msg.from.id;
   
   const text = `「 ✦ ƈɦօօֆɛ ʏօʊʀ ֆȶʏʟɛ ✦ 」
 ────୨ৎ────
@@ -192,22 +190,31 @@ async function handleHelp(msg, env) {
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
   
-  let text = `Available Commands:
+  let text = 'Available Commands:
 
-/start - Welcome message and font setup
-/help - Show this help message
-/upload - Upload a file
-/files - View all uploaded files
-/myfiles - View your uploaded files
-/cancel - Cancel current operation`;
+';
+  text += '/start - Welcome message and font setup
+';
+  text += '/help - Show this help message
+';
+  text += '/upload - Upload a file
+';
+  text += '/files - View all uploaded files
+';
+  text += '/myfiles - View your uploaded files
+';
+  text += '/cancel - Cancel current operation';
 
   if (userId === OWNER_ID) {
-    text += `
+    text += '
 
 Owner Commands:
-/setchannel - Set file forwarding channel
-/settings - Bot settings
-/stats - View statistics`;
+';
+    text += '/setchannel - Set file forwarding channel
+';
+    text += '/settings - Bot settings
+';
+    text += '/stats - View statistics';
   }
   
   text = convertFont(text, font);
@@ -235,7 +242,7 @@ async function handleFileUpload(msg, env) {
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
   
-  const file = msg.document || msg.photo?.[msg.photo.length - 1] || msg.video || msg.audio;
+  const file = msg.document || (msg.photo && msg.photo[msg.photo.length - 1]) || msg.video || msg.audio;
   
   if (!file) {
     const text = convertFont('Please send a file to upload', font);
@@ -250,7 +257,6 @@ async function handleFileUpload(msg, env) {
     return;
   }
   
-  // Copy message to channel without forward header
   const result = await copyMessageToChannel(chatId, msg.message_id, channelId);
   
   if (result.ok) {
@@ -286,30 +292,33 @@ async function handleFilesList(msg, env, page = 0) {
   text += convertFont('────୨ৎ────', font) + '
 
 ';
-  text += convertFont(`Page ${currentPage + 1} of ${totalPages}`, font) + '
+  text += convertFont('Page ' + (currentPage + 1) + ' of ' + totalPages, font) + '
 
 ';
   
-  files.forEach((file, idx) => {
-    const name = convertFont(file.fileName, font);
-    const size = (file.fileSize / 1024 / 1024).toFixed(2);
-    const date = new Date(file.uploadedAt).toLocaleDateString();
-    text += convertFont('File', font) + ': ' + name + '
+  if (files.length === 0) {
+    text += convertFont('No files uploaded yet', font);
+  } else {
+    files.forEach((file) => {
+      const name = convertFont(file.fileName, font);
+      const size = (file.fileSize / 1024 / 1024).toFixed(2);
+      const date = new Date(file.uploadedAt).toLocaleDateString();
+      text += convertFont('File', font) + ': ' + name + '
 ';
-    text += convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date + '
+      text += convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date + '
 
 ';
-  });
+    });
+  }
   
   text += convertFont('﹌﹌﹌﹌﹌﹌﹌', font);
   
-  // Pagination buttons
   const buttons = [];
   if (currentPage > 0) {
-    buttons.push({ text: '⟨ Previous', callback_data: `files_page_${currentPage - 1}` });
+    buttons.push({ text: '⟨ Previous', callback_data: 'files_page_' + (currentPage - 1) });
   }
   if (currentPage < totalPages - 1) {
-    buttons.push({ text: 'Next ⟩', callback_data: `files_page_${currentPage + 1}` });
+    buttons.push({ text: 'Next ⟩', callback_data: 'files_page_' + (currentPage + 1) });
   }
   
   const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
@@ -337,10 +346,47 @@ async function handleCallback(callback, env) {
     await editMessage(chatId, callback.message.message_id, text);
   } else if (data.startsWith('files_page_')) {
     const page = parseInt(data.replace('files_page_', ''));
-    await handleFilesList(callback.message, env, page);
+    const font = await getUserFont(userId, env);
+    const { files, totalPages, currentPage } = await getFileList(page, 5, env);
+    
+    let text = convertFont('Uploaded Files', font) + '
+';
+    text += convertFont('────୨ৎ────', font) + '
+
+';
+    text += convertFont('Page ' + (currentPage + 1) + ' of ' + totalPages, font) + '
+
+';
+    
+    if (files.length === 0) {
+      text += convertFont('No files uploaded yet', font);
+    } else {
+      files.forEach((file) => {
+        const name = convertFont(file.fileName, font);
+        const size = (file.fileSize / 1024 / 1024).toFixed(2);
+        const date = new Date(file.uploadedAt).toLocaleDateString();
+        text += convertFont('File', font) + ': ' + name + '
+';
+        text += convertFont('Size', font) + ': ' + size + ' MB ' + convertFont('Uploaded', font) + ': ' + date + '
+
+';
+      });
+    }
+    
+    text += convertFont('﹌﹌﹌﹌﹌﹌﹌', font);
+    
+    const buttons = [];
+    if (currentPage > 0) {
+      buttons.push({ text: '⟨ Previous', callback_data: 'files_page_' + (currentPage - 1) });
+    }
+    if (currentPage < totalPages - 1) {
+      buttons.push({ text: 'Next ⟩', callback_data: 'files_page_' + (currentPage + 1) });
+    }
+    
+    const keyboard = buttons.length > 0 ? { inline_keyboard: [buttons] } : null;
+    await editMessage(chatId, callback.message.message_id, text, keyboard);
   }
   
-  // Answer callback to remove loading state
   await apiRequest('answerCallbackQuery', { callback_query_id: callback.id });
 }
 
@@ -352,7 +398,6 @@ async function handleUpdate(update, env) {
       const text = msg.text || '';
       const userId = msg.from.id;
       
-      // Check for awaiting state
       const awaiting = await env.BOT_KV.get(`user:${userId}:awaiting`);
       
       if (awaiting === 'channel_forward' && msg.forward_from_chat) {
@@ -364,7 +409,6 @@ async function handleUpdate(update, env) {
         return;
       }
       
-      // Handle commands
       if (text.startsWith('/start')) {
         await handleStart(msg, env);
       } else if (text.startsWith('/help')) {
@@ -385,9 +429,9 @@ async function handleUpdate(update, env) {
 }
 
 // ===== WEBHOOK SETUP =====
-async function registerWebhook(request, env) {
+async function registerWebhook(request) {
   const url = new URL(request.url);
-  const webhookUrl = `${url.protocol}//${url.host}/webhook`;
+  const webhookUrl = url.protocol + '//' + url.host + '/webhook';
   
   const result = await apiRequest('setWebhook', {
     url: webhookUrl,
@@ -405,7 +449,7 @@ export default {
     const url = new URL(request.url);
     
     if (url.pathname === '/registerWebhook') {
-      return await registerWebhook(request, env);
+      return await registerWebhook(request);
     }
     
     if (url.pathname === '/webhook') {
