@@ -287,7 +287,8 @@ async function handleFilesList(msg, env, page = 0) {
   
   const { files, totalPages, currentPage } = await getFileList(page, 5, env);
   
-  let text = convertFont('Uploaded Files', font) + '
+  let text = '';
+  text += convertFont('Uploaded Files', font) + '
 ';
   text += convertFont('────୨ৎ────', font) + '
 
@@ -349,7 +350,8 @@ async function handleCallback(callback, env) {
     const font = await getUserFont(userId, env);
     const { files, totalPages, currentPage } = await getFileList(page, 5, env);
     
-    let text = convertFont('Uploaded Files', font) + '
+    let text = '';
+    text += convertFont('Uploaded Files', font) + '
 ';
     text += convertFont('────୨ৎ────', font) + '
 
