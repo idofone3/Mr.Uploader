@@ -1,0 +1,7 @@
+name = "file-upload-bot"
+main = "index.js"
+compatibility_date = "2025-11-25"
+
+kv_namespaces = [
+  { binding = "BOT_KV", id = "9aa6c308ed8c46a0b822bac83271f23f" }
+]
