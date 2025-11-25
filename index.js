@@ -69,6 +69,19 @@ async function saveFileMetadata(fileId, metadata, env) {
   await env.BOT_KV.put(`file:${fileId}`, JSON.stringify(metadata));
 }
 
+async function savePendingUpload(userId, fileInfo, env) {
+  await env.BOT_KV.put(`pending:${userId}`, JSON.stringify(fileInfo), { expirationTtl: 300 });
+}
+
+async function getPendingUpload(userId, env) {
+  const data = await env.BOT_KV.get(`pending:${userId}`);
+  return data ? JSON.parse(data) : null;
+}
+
+async function deletePendingUpload(userId, env) {
+  await env.BOT_KV.delete(`pending:${userId}`);
+}
+
 async function getFileList(page, pageSize, env) {
   const list = await env.BOT_KV.list({ prefix: 'file:' });
   const keys = list.keys;
@@ -175,15 +188,14 @@ async function handleHelp(msg, env) {
   commands.push('');
   commands.push('/start - Welcome message and font setup');
   commands.push('/help - Show this help message');
-  commands.push('/upload - Upload a file');
   commands.push('/files - View all uploaded files');
-  commands.push('/myfiles - View your uploaded files');
   commands.push('/cancel - Cancel current operation');
+  commands.push('');
+  commands.push('To upload: Just send me any file!');
   if (userId === OWNER_ID) {
     commands.push('');
     commands.push('Owner Commands:');
     commands.push('/setchannel - Set file forwarding channel');
-    commands.push('/settings - Bot settings');
     commands.push('/stats - View statistics');
   }
   const joinedText = commands.join('\n');
@@ -204,36 +216,103 @@ async function handleSetChannel(msg, env) {
   await env.BOT_KV.put(`user:${userId}:awaiting`, 'channel_forward');
 }
 
-async function handleFileUpload(msg, env) {
+async function handleFileReceived(msg, env) {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   const font = await getUserFont(userId, env);
   const file = msg.document || (msg.photo && msg.photo[msg.photo.length - 1]) || msg.video || msg.audio;
+  
   if (!file) {
-    await sendMessage(chatId, convertFont('Please send a file to upload', font), null);
     return;
   }
+  
   const channelId = await getChannelId(env);
   if (!channelId) {
     await sendMessage(chatId, convertFont('Channel not configured. Please contact the owner', font), null);
     return;
   }
-  const result = await copyMessageToChannel(chatId, msg.message_id, channelId);
+  
+  const fileInfo = {
+    chatId: chatId,
+    messageId: msg.message_id,
+    fileId: file.file_id,
+    fileName: file.file_name || msg.photo ? 'photo' : msg.video ? 'video' : msg.audio ? 'audio' : 'file',
+    fileSize: file.file_size || 0,
+    fileType: msg.document ? 'document' : (msg.photo ? 'photo' : (msg.video ? 'video' : 'audio'))
+  };
+  
+  await savePendingUpload(userId, fileInfo, env);
+  
+  const lines = [];
+  lines.push('✦ Upload this file?');
+  lines.push('');
+  lines.push('File: ' + fileInfo.fileName);
+  const sizeInMB = (fileInfo.fileSize / 1024 / 1024).toFixed(2);
+  lines.push('Size: ' + sizeInMB + ' MB');
+  const plainText = lines.join('\n');
+  const text = convertFont(plainText, font);
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '✅ Yes, Upload', callback_data: 'upload_yes' },
+        { text: '❌ No, Cancel', callback_data: 'upload_no' }
+      ]
+    ]
+  };
+  
+  await sendMessage(chatId, text, keyboard);
+}
+
+async function handleUploadConfirm(callback, env) {
+  const userId = callback.from.id;
+  const chatId = callback.message.chat.id;
+  const font = await getUserFont(userId, env);
+  
+  const fileInfo = await getPendingUpload(userId, env);
+  if (!fileInfo) {
+    await editMessage(chatId, callback.message.message_id, convertFont('Upload expired. Please send the file again.', font), null);
+    return;
+  }
+  
+  const channelId = await getChannelId(env);
+  const result = await copyMessageToChannel(fileInfo.chatId, fileInfo.messageId, channelId);
+  
   if (result.ok) {
     const metadata = {
-      fileId: file.file_id,
-      fileName: file.file_name || 'unnamed',
-      fileSize: file.file_size || 0,
-      fileType: msg.document ? 'document' : (msg.photo ? 'photo' : (msg.video ? 'video' : 'audio')),
+      fileId: fileInfo.fileId,
+      fileName: fileInfo.fileName,
+      fileSize: fileInfo.fileSize,
+      fileType: fileInfo.fileType,
       uploadedBy: userId,
       uploadedAt: new Date().toISOString(),
       channelMessageId: result.result.message_id
     };
-    await saveFileMetadata(file.file_id, metadata, env);
-    await sendMessage(chatId, convertFont('File uploaded successfully', font), null);
+    
+    await saveFileMetadata(fileInfo.fileId, metadata, env);
+    await deletePendingUpload(userId, env);
+    
+    const lines = [];
+    lines.push('✅ File uploaded successfully!');
+    lines.push('');
+    lines.push('Your file has been sent to the channel.');
+    const plainText = lines.join('\n');
+    const text = convertFont(plainText, font);
+    await editMessage(chatId, callback.message.message_id, text, null);
   } else {
-    await sendMessage(chatId, convertFont('Failed to upload file. Please try again', font), null);
+    const text = convertFont('Failed to upload file. Please try again.', font);
+    await editMessage(chatId, callback.message.message_id, text, null);
   }
+}
+
+async function handleUploadCancel(callback, env) {
+  const userId = callback.from.id;
+  const chatId = callback.message.chat.id;
+  const font = await getUserFont(userId, env);
+  
+  await deletePendingUpload(userId, env);
+  const text = convertFont('Upload cancelled.', font);
+  await editMessage(chatId, callback.message.message_id, text, null);
 }
 
 async function buildFileListText(files, currentPage, totalPages, font) {
@@ -284,16 +363,40 @@ async function handleCallback(callback, env) {
   const userId = callback.from.id;
   const chatId = callback.message.chat.id;
   const data = callback.data;
+  
   if (data === 'font_yes') {
     await handleFontSelection(callback.message, env);
   } else if (data === 'font_no') {
     await setUserFont(userId, 'normal', env);
-    await editMessage(chatId, callback.message.message_id, 'Font set to normal text. You can start using the bot now!', null);
+    const lines = [];
+    lines.push('✅ Font set to normal text.');
+    lines.push('');
+    lines.push('You can now use the bot!');
+    lines.push('');
+    lines.push('Just send me any file and I will ask you to confirm before uploading.');
+    lines.push('');
+    lines.push('Use /help to see all available commands.');
+    const text = lines.join('\n');
+    await editMessage(chatId, callback.message.message_id, text, null);
   } else if (data.startsWith('font_')) {
     const fontStyle = data.replace('font_', '');
     await setUserFont(userId, fontStyle, env);
     const font = await getUserFont(userId, env);
-    await editMessage(chatId, callback.message.message_id, convertFont('Font style saved! You can now use the bot with your selected style', font), null);
+    const lines = [];
+    lines.push('Font style saved!');
+    lines.push('');
+    lines.push('You can now use the bot with your selected style.');
+    lines.push('');
+    lines.push('Just send me any file and I will ask you to confirm before uploading.');
+    lines.push('');
+    lines.push('Use /help to see all available commands.');
+    const plainText = lines.join('\n');
+    const text = convertFont(plainText, font);
+    await editMessage(chatId, callback.message.message_id, text, null);
+  } else if (data === 'upload_yes') {
+    await handleUploadConfirm(callback, env);
+  } else if (data === 'upload_no') {
+    await handleUploadCancel(callback, env);
   } else if (data.startsWith('files_page_')) {
     const pageStr = data.replace('files_page_', '');
     const page = parseInt(pageStr);
@@ -322,6 +425,7 @@ async function handleUpdate(update, env) {
       const text = msg.text || '';
       const userId = msg.from.id;
       const awaiting = await env.BOT_KV.get(`user:${userId}:awaiting`);
+      
       if (awaiting === 'channel_forward' && msg.forward_from_chat) {
         await setChannelId(msg.forward_from_chat.id, env);
         await env.BOT_KV.delete(`user:${userId}:awaiting`);
@@ -329,6 +433,7 @@ async function handleUpdate(update, env) {
         await sendMessage(msg.chat.id, convertFont('Channel configured successfully', font), null);
         return;
       }
+      
       if (text.startsWith('/start')) {
         await handleStart(msg, env);
       } else if (text.startsWith('/help')) {
@@ -338,7 +443,7 @@ async function handleUpdate(update, env) {
       } else if (text.startsWith('/files')) {
         await handleFilesList(msg, env, 0);
       } else if (msg.document || msg.photo || msg.video || msg.audio) {
-        await handleFileUpload(msg, env);
+        await handleFileReceived(msg, env);
       }
     } else if (update.callback_query) {
       await handleCallback(update.callback_query, env);
